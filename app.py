@@ -21,8 +21,18 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 # Use PostgreSQL for production (Vercel) and SQLite for development
 if os.getenv('VERCEL'):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    # Ensure the database URL is using postgres:// instead of postgresql://
+    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trading_volume.db'
+
+# Configure SQLAlchemy
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
@@ -185,6 +195,35 @@ def get_btc_price() -> float:
     """Get current BTC price in USD."""
     # TODO: Implement BTC price fetching from an exchange
     return 50000.0  # Placeholder value
+
+# Initialize database
+def init_db():
+    with app.app_context():
+        db.create_all()
+
+# Call init_db when running locally
+if not os.getenv('VERCEL'):
+    init_db()
+
+# For Vercel deployment
+@app.route('/_vercel/deploy-complete', methods=['POST'])
+def deploy_complete():
+    return jsonify({"status": "ok"})
+
+# Error handlers
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('error.html', error=error), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('error.html', error=error), 404
+
+# Create error template
+@app.route('/error')
+def error():
+    return render_template('error.html', error="An error occurred")
 
 if not os.getenv('VERCEL'):
     with app.app_context():
