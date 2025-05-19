@@ -17,7 +17,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trading_volume.db'
+
+# Use PostgreSQL for production (Vercel) and SQLite for development
+if os.getenv('VERCEL'):
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trading_volume.db'
+
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
@@ -180,7 +186,7 @@ def get_btc_price() -> float:
     # TODO: Implement BTC price fetching from an exchange
     return 50000.0  # Placeholder value
 
-if __name__ == '__main__':
+if not os.getenv('VERCEL'):
     with app.app_context():
         db.create_all()
     app.run(debug=True) 
