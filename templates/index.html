@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Rose Trading Volume Tracker - Home{% endblock %}
+
+{% block content %}
+<div class="row align-items-center min-vh-75">
+    <div class="col-md-6">
+        <h1 class="display-4 mb-4">Welcome to Rose Trading Volume Tracker</h1>
+        <p class="lead mb-4">
+            Join the Rose Trading Volume Tracker community and monitor your trading volume across multiple cryptocurrency exchanges in real-time.
+            Get instant insights into your trading activity and maintain your premium channel access.
+        </p>
+        <div class="d-grid gap-2 d-md-flex">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+            {% else %}
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Join Now</a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">Login</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-6">
+        <img src="{{ url_for('static', filename='img/trading-illustration.svg') }}" alt="Trading Illustration" class="img-fluid">
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12 text-center mb-4">
+        <h2>Rose Trading Volume Tracker Features</h2>
+        <p class="text-muted">Access premium trading features with Rose Trading Volume Tracker</p>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-exchange-alt fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Binance Integration</h5>
+                <p class="card-text">Track your Binance trading volume with real-time updates.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Bybit Support</h5>
+                <p class="card-text">Monitor your Bybit trading activity and volume.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-coins fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">OKX Tracking</h5>
+                <p class="card-text">Keep track of your OKX trading volume and performance.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-wallet fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">MEXC Integration</h5>
+                <p class="card-text">Track your MEXC trading volume and account status.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12 text-center">
+        <h2>Join the Rose Trading Volume Tracker Community</h2>
+        <p class="lead text-muted">Get access to premium trading features and community support</p>
+        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg mt-3">Join Now</a>
+    </div>
+</div>
+{% endblock %} 

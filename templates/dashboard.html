@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Trading Volume Checker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <h2>Dashboard</h2>
+        <p class="text-muted">Monitor your trading volume across different exchanges</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Check Volume</h5>
+                <form id="volumeCheckForm">
+                    <div class="mb-3">
+                        <label for="exchange" class="form-label">Exchange</label>
+                        <select class="form-select" id="exchange" name="exchange" required>
+                            <option value="">Select Exchange</option>
+                            <option value="binance">Binance</option>
+                            <option value="bybit">Bybit</option>
+                            <option value="okx">OKX</option>
+                            <option value="mexc">MEXC</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="uid" class="form-label">User ID</label>
+                        <input type="text" class="form-control" id="uid" name="uid" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Check Volume</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Volume Results</h5>
+                <div id="volumeResults" class="d-none">
+                    <div class="alert alert-info">
+                        <h6>Current Volume</h6>
+                        <h3 id="currentVolume">$0.00</h3>
+                        <p id="volumeStatus" class="mb-0"></p>
+                    </div>
+                </div>
+                <div id="volumeError" class="alert alert-danger d-none"></div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Exchange Credentials</h5>
+                <form id="credentialsForm">
+                    <div class="mb-3">
+                        <label for="credExchange" class="form-label">Exchange</label>
+                        <select class="form-select" id="credExchange" name="exchange" required>
+                            <option value="">Select Exchange</option>
+                            <option value="binance">Binance</option>
+                            <option value="bybit">Bybit</option>
+                            <option value="okx">OKX</option>
+                            <option value="mexc">MEXC</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="apiKey" class="form-label">API Key</label>
+                        <input type="text" class="form-control" id="apiKey" name="apiKey" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="apiSecret" class="form-label">API Secret</label>
+                        <input type="password" class="form-control" id="apiSecret" name="apiSecret" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Credentials</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('volumeCheckForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const exchange = document.getElementById('exchange').value;
+    const uid = document.getElementById('uid').value;
+    
+    try {
+        const response = await fetch('/check-volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ exchange, uid })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            const volumeResults = document.getElementById('volumeResults');
+            const volumeError = document.getElementById('volumeError');
+            const currentVolume = document.getElementById('currentVolume');
+            const volumeStatus = document.getElementById('volumeStatus');
+            
+            volumeResults.classList.remove('d-none');
+            volumeError.classList.add('d-none');
+            
+            currentVolume.textContent = `$${data.volume.toLocaleString()}`;
+            
+            if (data.volume >= 150000) {
+                volumeStatus.textContent = 'Your volume meets the minimum requirement!';
+                volumeStatus.className = 'text-success';
+            } else {
+                volumeStatus.textContent = 'Your volume is below the minimum requirement.';
+                volumeStatus.className = 'text-danger';
+            }
+        } else {
+            throw new Error(data.error || 'Failed to check volume');
+        }
+    } catch (error) {
+        const volumeError = document.getElementById('volumeError');
+        volumeError.textContent = error.message;
+        volumeError.classList.remove('d-none');
+        document.getElementById('volumeResults').classList.add('d-none');
+    }
+});
+
+document.getElementById('credentialsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const exchange = document.getElementById('credExchange').value;
+    const apiKey = document.getElementById('apiKey').value;
+    const apiSecret = document.getElementById('apiSecret').value;
+    
+    try {
+        const response = await fetch('/save-credentials', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ exchange, apiKey, apiSecret })
+        });
+        
+        if (response.ok) {
+            alert('Credentials saved successfully!');
+            this.reset();
+        } else {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to save credentials');
+        }
+    } catch (error) {
+        alert(error.message);
+    }
+});
+</script>
+{% endblock %} 
