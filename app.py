@@ -10,7 +10,13 @@ from dotenv import load_dotenv
 import aiohttp
 import asyncio
 import json
+import traceback
+import logging
 from werkzeug.security import generate_password_hash, check_password_hash
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -18,14 +24,20 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
+# Log environment variables (excluding sensitive data)
+logger.debug(f"VERCEL environment: {os.getenv('VERCEL')}")
+logger.debug(f"DATABASE_URL exists: {bool(os.getenv('DATABASE_URL'))}")
+
 # Use PostgreSQL for production (Vercel) and SQLite for development
 if os.getenv('VERCEL'):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     # Ensure the database URL is using postgres:// instead of postgresql://
-    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
+    if app.config['SQLALCHEMY_DATABASE_URI'] and app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
         app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://', 1)
+    logger.debug("Using PostgreSQL database")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///trading_volume.db'
+    logger.debug("Using SQLite database")
 
 # Configure SQLAlchemy
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -34,10 +46,16 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_recycle': 300,
 }
 
-db = SQLAlchemy(app)
-csrf = CSRFProtect(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+try:
+    db = SQLAlchemy(app)
+    csrf = CSRFProtect(app)
+    login_manager = LoginManager(app)
+    login_manager.login_view = 'login'
+    logger.debug("Database and extensions initialized successfully")
+except Exception as e:
+    logger.error(f"Error initializing database: {str(e)}")
+    logger.error(traceback.format_exc())
+    raise
 
 # Supported exchanges configuration
 SUPPORTED_EXCHANGES = {
@@ -198,8 +216,14 @@ def get_btc_price() -> float:
 
 # Initialize database
 def init_db():
-    with app.app_context():
-        db.create_all()
+    try:
+        with app.app_context():
+            db.create_all()
+            logger.debug("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
 
 # Call init_db when running locally
 if not os.getenv('VERCEL'):
@@ -213,17 +237,39 @@ def deploy_complete():
 # Error handlers
 @app.errorhandler(500)
 def internal_error(error):
+    logger.error(f"500 error occurred: {str(error)}")
+    logger.error(traceback.format_exc())
     db.session.rollback()
-    return render_template('error.html', error=error), 500
+    return render_template('error.html', error=str(error)), 500
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('error.html', error=error), 404
+    logger.error(f"404 error occurred: {str(error)}")
+    return render_template('error.html', error=str(error)), 404
 
 # Create error template
 @app.route('/error')
 def error():
     return render_template('error.html', error="An error occurred")
+
+# Add a health check endpoint
+@app.route('/health')
+def health_check():
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        return jsonify({
+            "status": "healthy",
+            "database": "connected",
+            "environment": "production" if os.getenv('VERCEL') else "development"
+        })
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e)
+        }), 500
 
 if not os.getenv('VERCEL'):
     with app.app_context():
